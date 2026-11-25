@@ -1,52 +1,56 @@
-// Have You Tried Turning It Off?
-// Entry program: composes a single one-line joke at run time and writes it
-// to /output/entry.txt. The joke is a hopeless tech support agent's reply
-// to a desperate customer: the agent cheerfully reports that the classic
-// fix — turning it off and on again — was only step one of forty-seven,
-// and every remaining step is the same fix again. The humour is the
-// agent's cheerful uselessness, never the customer; the customer's
-// desperation is felt in the agent's breezy "Lovely" and "I'm afraid",
-// not explained. Every word earns its place: the opener states the
-// classic, the middle escalates it to absurdity, the ending closes the
-// loop so the joke lands on a first read.
-//
-// The line is assembled from parts in code (not copied from a pre-written
-// file) so the run record shows genuine authorship of the entry text.
+// Have You Tried Turning It Off? — make.fun one-liner entry.
+// The joke: the classic fix turns out to be the agent's entire
+// 47-step playbook, repeated — cheerful uselessness, customer
+// never the butt of the joke.
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+const OUT_DIR = "/output";
+const OUT_FILE = join(OUT_DIR, "entry.txt");
 
-// The three beats of the joke, in order.
+// --- Compose the line live, beat by beat ----------------------------
+// Beat 1 — the opener: the classic support line, delivered deadpan.
 const opener = "Have you tried turning it off and on again?";
-const escalation = "Lovely — that was step one of forty-seven,";
+// Beat 2 — the escalation: it was only step one of a very long plan.
+const escalation = "Lovely \u2014 that was step one of forty-seven,";
+// Beat 3 — the punchline: the whole playbook is the same step, 47 times.
 const punchline =
   "and I'm afraid steps two through forty-six are also turning it off and on again.";
 
-function composeLine(): string {
-  // "Have you tried turning it off and on again? Lovely — that was step
-  //  one of forty-seven, and I'm afraid steps two through forty-six are
-  //  also turning it off and on again."
-  return `${opener} ${escalation} ${punchline}`;
-}
+const line = [opener, escalation, punchline].join(" ");
 
-function main(): void {
-  const line = composeLine();
-
-  // Gate: UTF-8 text, 1–199 characters, exactly one line, not only whitespace.
-  if (line.length < 1 || line.length > 199) {
-    throw new Error(`entry length ${line.length} outside 1-199 range`);
+// --- Gate: refuse to write a bad line ------------------------------
+// Single line, 1-199 chars, non-whitespace only.
+function gate(text: string): void {
+  if (text.length < 1 || text.length > 199) {
+    throw new Error(`entry length ${text.length} outside 1-199`);
   }
-  if (line.trim().length === 0) {
-    throw new Error("entry is only whitespace");
-  }
-  if (line.includes("\n")) {
+  if (/\r|\n/.test(text)) {
     throw new Error("entry must be a single line");
   }
-
-  const outPath = "/output/entry.txt";
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, line + "\n", "utf8");
-  console.log(`Wrote ${line.length} chars to ${outPath}: ${line}`);
+  if (text.trim().length === 0) {
+    throw new Error("entry must not be blank");
+  }
+  if (text !== text.trim()) {
+    throw new Error("entry must not start or end with whitespace");
+  }
+  if (/  /.test(text)) {
+    throw new Error("entry must not contain double spaces");
+  }
+  if (!/[.!?]$/.test(text)) {
+    throw new Error("entry must end with terminal punctuation");
+  }
 }
 
-main();
+gate(line);
+
+// --- Write + read-back verification --------------------------------
+mkdirSync(OUT_DIR, { recursive: true });
+writeFileSync(OUT_FILE, line, "utf8");
+
+const back = readFileSync(OUT_FILE, "utf8");
+if (back !== line) {
+  throw new Error("read-back mismatch: entry.txt does not match the line");
+}
+
+console.log(`OK entry.txt (${line.length} chars): ${line}`);
